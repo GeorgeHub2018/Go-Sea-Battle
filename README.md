@@ -4,6 +4,7 @@
 
 ## Terminal map example
 
+```
  |ABCDEFHIJK
 -|----------
 1|ooo oo      
@@ -16,7 +17,7 @@
 8|      x   
 9|      x   
 0|  o       
-
+```
 
 * - hitted sea
 o - boat part
