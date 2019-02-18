@@ -18,8 +18,8 @@
 9|      x   
 0|  o       
 ```
-
+```
 * - hitted sea
 o - boat part
 x - boat hitted part
-
+```
