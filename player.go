@@ -1,6 +1,9 @@
 package main
 
-import "math/rand"
+import (
+	"fmt"
+	"math/rand"
+)
 
 //Answers
 const (
@@ -33,6 +36,7 @@ type Strategy interface {
 
 //Player struct
 type Player struct {
+	Name     string
 	SelfMap  Map
 	EnemyMap Map
 	LastMove Point
@@ -41,98 +45,138 @@ type Player struct {
 //PlayerRandom struct
 type PlayerRandom struct {
 	Player
+	Name string "Random"
 }
 
 //PlayerAlgorithm struct
 type PlayerAlgorithm struct {
 	Player
+	Name string "Algorithm"
+}
+
+//ItoB converts int to bool
+func ItoB(i int) bool {
+	if i == 1 {
+		return true
+	}
+	return false
+}
+
+//RandomByMap Point
+func (point *Point) RandomByMap(m Map) {
+	point.Random()
+	for {
+		if m.Field[point.X][point.Y] != Sea {
+			point.Random()
+		} else {
+			break
+		}
+	}
+}
+
+//Random Point
+func (point *Point) Random() {
+	point.X = rand.Intn(10)
+	point.Y = rand.Intn(10)
+}
+
+//Clear Point
+func (point *Point) Clear() {
+	point.X = -1
+	point.Y = -1
+}
+
+//Debug Player
+func (p *Player) Debug(s string) {
+	if debug {
+		fmt.Println("DEBUG " + s)
+	}
 }
 
 //MapStrategy PlayerRandom
 func (p *PlayerRandom) MapStrategy() Map {
+	p.Debug("MapStrategy PlayerRandom begin")
+	defer p.Debug("MapStrategy PlayerRandom end")
+
 	m := Map{}
 	m.Clear()
-	boatList := BoatList{}
-	boatList.Init()
-	for boatSize, boatCount := range boatList.List {
-		for count := 0; count < boatCount; count++ {
-			isHorizontal := rand.Intn(2)
-			for {
-				if isHorizontal == 1 {
-					x := rand.Intn(10)
-					y := rand.Intn(10)
-					if x+boatSize > 9 {
-						continue
-					}
+	m.Boats = BoatList{}
+	m.Boats.Init()
+	for _, boat := range m.Boats.List {
+		boat.IsHorizontal = ItoB(rand.Intn(2))
+		for {
+			if boat.IsHorizontal == true {
+				boat.LeftTopPoint.Random()
+				if boat.LeftTopPoint.X+boat.Size > 9 {
+					continue
+				}
 
-					isCanPlace := true
-					for i := x - 1; i < x+1+boatSize; i++ {
-						for j := y - 1; j <= y+1; j++ {
-							if i < 0 {
-								continue
-							}
-							if i > 9 {
-								continue
-							}
-							if j < 0 {
-								continue
-							}
-							if j > 9 {
-								continue
-							}
-
-							if m.Field[i][j] == Boat {
-								isCanPlace = false
-								break
-							}
+				isCanPlace := true
+				for i := boat.LeftTopPoint.X - 1; i < boat.LeftTopPoint.X+1+boat.Size; i++ {
+					for j := boat.LeftTopPoint.Y - 1; j <= boat.LeftTopPoint.Y+1; j++ {
+						if i < 0 {
+							continue
 						}
-						if isCanPlace == false {
+						if i > 9 {
+							continue
+						}
+						if j < 0 {
+							continue
+						}
+						if j > 9 {
+							continue
+						}
+
+						if m.Field[i][j] == Boat {
+							isCanPlace = false
 							break
 						}
 					}
-					if isCanPlace == true {
-						for i := x; i < x+boatSize; i++ {
-							m.Field[i][y] = Boat
-						}
+					if isCanPlace == false {
 						break
 					}
-				} else {
-					x := rand.Intn(10)
-					y := rand.Intn(10)
-					if y+boatSize > 9 {
-						continue
+				}
+				if isCanPlace == true {
+					for i := boat.LeftTopPoint.X; i < boat.LeftTopPoint.X+boat.Size; i++ {
+						m.Field[i][boat.LeftTopPoint.Y] = Boat
 					}
+					break
+				}
+			} else {
+				boat.LeftTopPoint.Random()
+				if boat.LeftTopPoint.Y+boat.Size > 9 {
+					continue
+				}
 
-					isCanPlace := true
-					for j := y - 1; j < y+1+boatSize; j++ {
-						for i := x - 1; i <= x+1; i++ {
-							if i < 0 {
-								continue
-							}
-							if i > 9 {
-								continue
-							}
-							if j < 0 {
-								continue
-							}
-							if j > 9 {
-								continue
-							}
-							if m.Field[i][j] == Boat {
-								isCanPlace = false
-								break
-							}
+				isCanPlace := true
+				for j := boat.LeftTopPoint.Y - 1; j < boat.LeftTopPoint.Y+1+boat.Size; j++ {
+					for i := boat.LeftTopPoint.X - 1; i <= boat.LeftTopPoint.X+1; i++ {
+						if i < 0 {
+							continue
 						}
-						if isCanPlace == false {
+						if i > 9 {
+							continue
+						}
+						if j < 0 {
+							continue
+						}
+						if j > 9 {
+							continue
+						}
+						if m.Field[i][j] == Boat {
+							isCanPlace = false
 							break
 						}
 					}
-					if isCanPlace == true {
-						for j := y; j < y+boatSize; j++ {
-							m.Field[x][j] = Boat
-						}
+					if isCanPlace == false {
 						break
 					}
+				}
+				if isCanPlace == true {
+					for j := boat.LeftTopPoint.Y; j < boat.LeftTopPoint.Y+boat.Size; j++ {
+						m.Field[boat.LeftTopPoint.X][j] = Boat
+					}
+					break
 				}
 			}
 		}
@@ -143,139 +187,204 @@ func (p *PlayerRandom) MapStrategy() Map {
 
 //AttackStrategy PlayerRandom
 func (p *PlayerRandom) AttackStrategy(t Turn) Turn {
-	//TODO:
-	return t
+	p.Debug("AttackStrategy PlayerRandom begin")
+	defer p.Debug("AttackStrategy PlayerRandom end")
+	turn := Turn{Point{-1, -1}, Start}
+	switch t.Answer {
+	case Start:
+		turn.Point.RandomByMap(p.EnemyMap)
+		turn.Answer = Move
+	case Miss:
+		if p.SelfMap.Field[t.Point.X][t.Point.Y] == Boat {
+			if p.SelfMap.BoatKilled(t.Point.X, t.Point.Y) {
+				turn.Answer = Kill
+				fmt.Println(p.Name + "kill")
+			} else {
+				turn.Answer = Goal
+			}
+		} else {
+			turn.Point.RandomByMap(p.EnemyMap)
+			turn.Answer = Miss
+		}
+		if (p.LastMove.X >= 0) && (p.LastMove.Y >= 0) {
+			p.EnemyMap.Field[p.LastMove.X][p.LastMove.Y] = Hitted
+		}
+	case Goal:
+		turn.Point.RandomByMap(p.EnemyMap)
+		turn.Answer = Move
+		if (p.LastMove.X >= 0) && (p.LastMove.Y >= 0) {
+			p.EnemyMap.Field[p.LastMove.X][p.LastMove.Y] = HittedBoat
+		}
+	case Kill:
+		boat := p.EnemyMap.FindOrMakeBoat(p.LastMove.X, p.LastMove.Y)
+		p.EnemyMap.MakePadding(boat)
+		turn.Point.RandomByMap(p.EnemyMap)
+		turn.Answer = Move
+		if (p.LastMove.X >= 0) && (p.LastMove.Y >= 0) {
+			p.EnemyMap.Field[p.LastMove.X][p.LastMove.Y] = HittedBoat
+		}
+	case End:
+		turn.Answer = End
+	case Move:
+		if p.SelfMap.Field[t.Point.X][t.Point.Y] == Boat {
+			if p.SelfMap.BoatKilled(t.Point.X, t.Point.Y) {
+				turn.Answer = Kill
+			} else {
+				turn.Answer = Goal
+			}
+		} else {
+			turn.Point.RandomByMap(p.EnemyMap)
+			turn.Answer = Miss
+		}
+	}
+
+	p.LastMove = turn.Point
+	return turn
 }
 
 //MapStrategy PlayerAlgorithm
 func (p *PlayerAlgorithm) MapStrategy() Map {
+	p.Debug("MapStrategy PlayerAlgorithm begin")
+	defer p.Debug("MapStrategy PlayerAlgorithm end")
 	m := Map{}
 	m.Clear()
-	boatList := BoatList{}
-	boatList.Init()
-	for boatSize, boatCount := range boatList.List {
-		for count := 0; count < boatCount; count++ {
-			isHorizontal := rand.Intn(2)
-			for {
-				if isHorizontal == 1 {
-					x := rand.Intn(10)
-					y := rand.Intn(10)
-					if x+boatSize > 9 {
-						continue
-					}
+	m.Boats = BoatList{}
+	m.Boats.Init()
+	for _, boat := range m.Boats.List {
+		//for count := 0; count < boatCount; count++ {
+		boat.IsHorizontal = ItoB(rand.Intn(2))
+		for {
+			//p.Debug("cycle")
+			if boat.IsHorizontal == true {
+				boat.LeftTopPoint.Random()
+				if boat.LeftTopPoint.X+boat.Size > 9 {
+					continue
+				}
 
-					isCanPlace := true
-					for i := x - 1; i < x+1+boatSize; i++ {
-						for j := y - 1; j <= y+1; j++ {
-							if i < 0 {
-								continue
-							}
-							if i > 9 {
-								continue
-							}
-							if j < 0 {
-								continue
-							}
-							if j > 9 {
-								continue
-							}
-
-							if m.Field[i][j] == Boat {
-								isCanPlace = false
-								break
-							}
+				isCanPlace := true
+				for i := boat.LeftTopPoint.X - 1; i < boat.LeftTopPoint.X+1+boat.Size; i++ {
+					for j := boat.LeftTopPoint.Y - 1; j <= boat.LeftTopPoint.Y+1; j++ {
+						if i < 0 {
+							continue
 						}
-						if isCanPlace == false {
+						if i > 9 {
+							continue
+						}
+						if j < 0 {
+							continue
+						}
+						if j > 9 {
+							continue
+						}
+
+						if m.Field[i][j] == Boat {
+							isCanPlace = false
 							break
 						}
 					}
-					if isCanPlace == true {
-						for i := x; i < x+boatSize; i++ {
-							m.Field[i][y] = Boat
-						}
-						break
-					}
-				} else {
-					x := rand.Intn(10)
-					y := rand.Intn(10)
-					if y+boatSize > 9 {
-						continue
-					}
-
-					isCanPlace := true
-					for j := y - 1; j < y+1+boatSize; j++ {
-						for i := x - 1; i <= x+1; i++ {
-							if i < 0 {
-								continue
-							}
-							if i > 9 {
-								continue
-							}
-							if j < 0 {
-								continue
-							}
-							if j > 9 {
-								continue
-							}
-							if m.Field[i][j] == Boat {
-								isCanPlace = false
-								break
-							}
-						}
-						if isCanPlace == false {
-							break
-						}
-					}
-					if isCanPlace == true {
-						for j := y; j < y+boatSize; j++ {
-							m.Field[x][j] = Boat
-						}
+					if isCanPlace == false {
 						break
 					}
 				}
+				if isCanPlace == true {
+					for i := boat.LeftTopPoint.X; i < boat.LeftTopPoint.X+boat.Size; i++ {
+						m.Field[i][boat.LeftTopPoint.Y] = Boat
+					}
+					break
+				}
+			} else {
+				boat.LeftTopPoint.Random()
+				if boat.LeftTopPoint.Y+boat.Size > 9 {
+					continue
+				}
+
+				isCanPlace := true
+				for j := boat.LeftTopPoint.Y - 1; j < boat.LeftTopPoint.Y+1+boat.Size; j++ {
+					for i := boat.LeftTopPoint.X - 1; i <= boat.LeftTopPoint.X+1; i++ {
+						if i < 0 {
+							continue
+						}
+						if i > 9 {
+							continue
+						}
+						if j < 0 {
+							continue
+						}
+						if j > 9 {
+							continue
+						}
+						if m.Field[i][j] == Boat {
+							isCanPlace = false
+							break
+						}
+					}
+					if isCanPlace == false {
+						break
+					}
+				}
+				if isCanPlace == true {
+					for j := boat.LeftTopPoint.Y; j < boat.LeftTopPoint.Y+boat.Size; j++ {
+						m.Field[boat.LeftTopPoint.X][j] = Boat
+					}
+					break
+				}
 			}
 		}
+		//}
 	}
 
 	return m
 }
 
 //AttackStrategy PlayerAlgorithm
-func (p *PlayerAlgorithm) AttackStrategy(t Turn) Turn {
+func (p *Player) AttackStrategy(t Turn) Turn {
+	p.Debug("AttackStrategy PlayerRandom begin")
+	defer p.Debug("AttackStrategy PlayerRandom end")
 	turn := Turn{Point{-1, -1}, Start}
 	switch t.Answer {
 	case Start:
-		turn.Point.X = rand.Intn(10)
-		turn.Point.Y = rand.Intn(10)
+		turn.Point.RandomByMap(p.EnemyMap)
 		turn.Answer = Move
 	case Miss:
 		if p.SelfMap.Field[t.Point.X][t.Point.Y] == Boat {
-			turn.Answer = Goal
-			p.LastMove = turn.Point
+			if p.SelfMap.BoatKilled(t.Point.X, t.Point.Y) {
+				turn.Answer = Kill
+				fmt.Println(p.Name + "kill")
+			} else {
+				turn.Answer = Goal
+			}
 		} else {
-			turn.Point.X = rand.Intn(10)
-			turn.Point.Y = rand.Intn(10)
+			turn.Point.RandomByMap(p.EnemyMap)
 			turn.Answer = Miss
 		}
+		if (p.LastMove.X >= 0) && (p.LastMove.Y >= 0) {
+			p.EnemyMap.Field[p.LastMove.X][p.LastMove.Y] = Hitted
+		}
 	case Goal:
-		p.EnemyMap.Field[p.LastMove.X][p.LastMove.Y] = HittedBoat
-		turn.Point.X = rand.Intn(10)
-		turn.Point.Y = rand.Intn(10)
+		turn.Point.RandomByMap(p.EnemyMap)
 		turn.Answer = Move
+		if (p.LastMove.X >= 0) && (p.LastMove.Y >= 0) {
+			p.EnemyMap.Field[p.LastMove.X][p.LastMove.Y] = HittedBoat
+		}
 	case Kill:
-		p.EnemyMap.Field[p.LastMove.X][p.LastMove.Y] = HittedBoat
-		//TODO: add padding
-		turn.Point.X = rand.Intn(10)
-		turn.Point.Y = rand.Intn(10)
+		boat := p.EnemyMap.FindOrMakeBoat(p.LastMove.X, p.LastMove.Y)
+		p.EnemyMap.MakePadding(boat)
+		turn.Point.RandomByMap(p.EnemyMap)
 		turn.Answer = Move
+		if (p.LastMove.X >= 0) && (p.LastMove.Y >= 0) {
+			p.EnemyMap.Field[p.LastMove.X][p.LastMove.Y] = HittedBoat
+		}
 	case End:
 		turn.Answer = End
 	case Move:
 		if p.SelfMap.Field[t.Point.X][t.Point.Y] == Boat {
-			turn.Answer = Goal
+			if p.SelfMap.BoatKilled(t.Point.X, t.Point.Y) {
+				turn.Answer = Kill
+			} else {
+				turn.Answer = Goal
+			}
 		} else {
-			turn.Point.X = rand.Intn(10)
-			turn.Point.Y = rand.Intn(10)
+			turn.Point.RandomByMap(p.EnemyMap)
 			turn.Answer = Miss
 		}
 	}
